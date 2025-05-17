@@ -1,0 +1,1236 @@
+---
+title: MoeCTF2024-复现
+date: 2025-05-12 12:01:36
+tags:
+  - CTF
+  - LLL
+  - RSA
+categories:
+  - 复现
+mathjax: true
+description: 复现
+---
+
+> 复现了一下后面的几道题目，前面的题写的时间有点久远了，~~主要是我懒~~
+
+
+
+
+
+## Ezmatirx
+
+题干
+```python
+from Crypto.Util.number import *
+
+from secret import FLAG,secrets,SECERT_T
+
+  
+  
+
+assert len(secrets) == 16
+
+assert FLAG == b'moectf{' + secrets + b'}'
+
+assert len(SECERT_T) <= 127
+
+  
+  
+
+class LFSR:
+
+    def __init__(self):
+
+        self._s = list(map(int,list("{:0128b}".format(bytes_to_long(secrets)))))
+
+        for _ in range(8*len(secrets)):
+
+            self.clock()
+
+    def clock(self):
+
+        b = self._s[0]
+
+        c = 0
+
+        for t in SECERT_T:c ^= self._s[t]
+
+        self._s = self._s[1:] + [c]
+
+        return b
+
+    def stream(self, length):
+
+        return [self.clock() for _ in range(length)]
+
+  
+  
+
+c = LFSR()
+
+stream = c.stream(256)
+
+print("".join(map(str,stream))[:-5])
+
+# 11111110011011010000110110100011110110110101111000101011001010110011110011000011110001101011001100000011011101110000111001100111011100010111001100111101010011000110110101011101100001010101011011101000110001111110100000011110010011010010100100000000110
+```
+
+`LFSR`问题 考虑使用BM算法  来恢复抽头`Secret_T`，板子如下
+```python
+def berlekamp_massey(s):
+
+    n = len(s)
+
+    c, b = [0] * n, [0] * n
+
+    c[0], b[0] = 1, 1
+
+    l, m, d = 0, -1, 0
+
+    for i in range(n):
+
+        d = s[i]
+
+        for j in range(1, l + 1):
+
+            d ^= c[j] & s[i - j]
+
+        if d == 1:
+
+            t = c.copy()
+
+            p = [0] * n
+
+            for j in range(n - i + m):
+
+                if j < len(b):
+
+                    p[j + i - m] = b[j]
+
+            c = [c[k] ^ p[k] for k in range(n)]
+
+            if 2 * l <= i:
+
+                l, m, b = i + 1 - l, i, t
+
+    return [i for i, bit in enumerate(c[:l + 1]) if bit]
+```
+然后lfsr逆不出来，美美不会了 ，仔细一想BM算法好像要求你有的输出序列是状态n的至少两倍，这里只有251个，估计不够的，反正输出也就是01串，直接爆破这五位不就行啦 然后检测一下 下标有小于0或者大于128的丢掉就行 然后对获得的taps拿来逆lfsr 
+exp
+
+```python
+def xor(state,taps):
+
+    res = 0
+
+    for i in taps:
+
+        res^=state[i]
+
+    return res
+
+  
+
+s_original = '11111110011011010000110110100011110110110101111000101011001010110011110011000011110001101011001100000011011101110000111001100111011100010111001100111101010011000110110101011101100001010101011011101000110001111110100000011110010011010010100100000000110'
+
+  
+
+for i in range(128):
+
+    s = s_original
+
+    s = s + bin(i)[2:].zfill(5)
+
+    # print(s)
+
+    # print(len(s))
+
+    ss = list(map(int, s))
+
+    taps = berlekamp_massey(ss)
+
+    taps = [int(i)-1 for i in taps][1:]
+
+    mark = 0
+
+    for i in taps:
+
+        if i<0 or i > 127:
+
+            mark = 1
+
+    if mark :
+
+        continue
+
+    # print(taps)
+
+    lst = ss[:128][::-1]
+
+    for i in range(128):
+
+        tmp = lst[0]
+
+        for i in range(1,128):
+
+            lst[i-1] = lst[i]
+
+        lst[127] = 0
+
+        res = xor(lst,taps)
+
+        if res != tmp:
+
+            lst[127] = 1
+
+    flag = long_to_bytes(int(''.join(map(str, lst[::-1])), 2))
+
+    maybe = 1
+
+    for i in flag:
+
+        if not chr(i) in string.printable:
+
+            maybe = 0
+
+            break
+
+    if maybe:
+
+        print(flag)
+```
+```
+b'e4sy_lin3ar_sys!'
+b'e4sy_lin3ar_sys!'
+b'e4sy_lin3ar_sys!'
+```
+`moectf{e4sy_lin3ar_sys!}` 
+这是我们自己的方法 官方也给了用矩阵思路来求解的wp ~~话说标题都是Matrix确实该这样做的）~~
+
+这里我们分析这个128位的线性反馈寄存器 
+把问题拓宽 在一个$GF(2)$域中我们对于一个n级的lfsr 我们设它的递推公式是 
+$$
+a_{i+n}=\sum\limits^{n-1}_{k=0}a_{i+k}c_{k+1}
+$$
+$$
+S_i=(a_i,a_{i+1},\dots,a_{i+n-1})
+$$
+对应的次态是
+$$
+S_{i+1}=(a_{i+1},a_{i+2},\dots,a_{i+n})
+$$
+可以构建矩阵运算式
+$$
+(a_i, a_{i+1}, \cdots, a_{i+n-1}) \cdot 
+\begin{pmatrix}
+0 & 0 & \cdots & 0 & c_1 \\
+1 & 0 & \cdots & 0 & c_{2} \\
+0 & 1 & \cdots & 0 & c_{3} \\
+\vdots & \vdots & \ddots & \vdots & \vdots \\
+0 & 0 & \cdots & 1 & c_{n}
+\end{pmatrix}
+= (a_{i+1}, a_{i+2}, \cdots, a_{i+n})
+$$
+简记为
+$$
+S_{i}C = S_{i+1}
+$$
+可见我们把这里的列放在一个无限长的直线上，对这个序列右乘矩阵$C$就能实现我们的“线性移位”，同时对于每一个输出，我们都有
+$$
+a_{i+n}=S_i*(c_{1},c_{2},\dots,c_{n})^{T}
+$$
+我们把这里的
+$$
+(c_{1},c_{2},\dots,c_{n})
+$$
+视为未知量，当我们收集到了
+$$
+a_{1}\sim  a_{2n}
+$$
+的所有数据，我们就能构造出$n$个方程
+$$
+\begin{flalign}
+a_{1+n} &= S_1 \cdot (c_{1}, c_{2}, \dots, c_{n})^{T} & \\
+a_{2+n} &= S_2 \cdot (c_{1}, c_{2}, \dots, c_{n})^{T} & \\
+& \vdots & \\
+a_{2n} &= S_n \cdot (c_{1}, c_{2}, \dots, c_{n})^{T} &
+\end{flalign}
+$$
+现在我们构造满秩方程组
+$$
+\begin{pmatrix} S_{1} \\ S_2 \\ \vdots \\ S_{n}\end{pmatrix}\begin{pmatrix}c_{1} \\ c_{2} \\ \vdots \\ c_n\end{pmatrix}=\begin{pmatrix}a_{n+1} \\ a_{n+2} \\ \vdots \\ a_{2n}\end{pmatrix}
+$$
+显然左边是满秩的，乘逆矩阵就能计算出$C$了
+回到这题，收集的过程是不是就理所当然了呢？
+来点脚本
+```python
+# sage
+F = GF(2)
+
+V = VectorSpace(F,n)
+
+vec = V(list(map(int, list(output[n:]))))# 这里应该保证output刚好有2n位，不然配不齐
+
+M = []
+
+for i in range(n-1,2*n-1):
+
+    m = []
+
+    for j in range(n):
+
+        m.append(output[i-j])
+
+    M.append(m)
+
+M = Matrix(F,M)
+
+print(M.rank())
+
+sol = M.solve_right(vec)
+
+print(len(sol))
+
+taps = [idx for idx, val in enumerate(sol) if val == 1]
+
+print("taps:", taps)
+
+print("len(taps):", len(taps))
+```
+注意这里的lfsr新位在放在后面，是左移加放位的
+成功找到$C$之后，我们就能
+$$
+S_{i-1}=S_{i}C^{-1}
+$$
+美美运算找回初态，板子如下
+```python
+poly = list(sol)
+
+B = Matrix(F,n,n)
+
+for i in range(n):
+
+    B[i,n-1] = poly[n-1-i]
+
+for i in range(n-1):
+
+    B[i+1,i] = 1
+
+B_inv = B**(-1)
+
+t = V(list(map(int,list(output[:n]))))
+
+print(long_to_bytes(int("".join(map(str,t*B_inv**(n))),2)))
+```
+
+说实话推导向右移 放最低位的也是类似的思路，这里就不多写了~~主要是懒~~
+
+## EzPack
+
+```python
+from Crypto.Util.number import *
+
+from secret import flag
+
+import random  
+  
+p = 2050446265000552948792079248541986570794560388346670845037360320379574792744856498763181701382659864976718683844252858211123523214530581897113968018397826268834076569364339813627884756499465068203125112750486486807221544715872861263738186430034771887175398652172387692870928081940083735448965507812844169983643977
+
+# print(p.bit_length()) 1038
+
+assert len(flag) == 42
+
+  
+  
+
+def encode(msg):
+
+    return bin(bytes_to_long(msg))[2:].zfill(8*len(msg))
+
+
+def genkey(len):
+
+    sums = 0
+
+    keys = []
+
+    for i in range(len):
+
+        k = random.randint(1,7777)
+
+        x = sums + k
+
+        keys.append(x)
+
+        sums += x
+
+    return keys
+
+  
+  
+
+key = genkey(42*8) # 336
+
+  
+  
+
+def enc(m, keys):
+
+    msg = encode(m)
+
+    print(len(keys))
+
+    print(len(msg))
+
+    assert len(msg) == len(keys)
+
+    s = sum((k if (int(p,2) == 1) else 1) for p, k in zip(msg, keys))
+
+    print(msg)
+
+    for p0,k in zip(msg,keys):
+
+        print(int(p0,2))
+
+    return pow(7,s,p)
+
+  
+  
+
+cipher = enc(flag,key)
+
+  
+
+with open("output.txt", "w") as fs:
+
+    fs.write(str(key)+'\n')
+
+    fs.write(str(cipher))
+```
+
+背包问题 题目加密流程为把`flag`编码为二进制01串$m$ 然后生成背包序列$key$,满足
+$$
+k_i>k_{i-1}+k_{i-2}+\dots+k_1
+$$
+然后根据这个$m$串，构建
+$$
+s=\sum\limits^{n}_{i=1}m_ik_i
+$$
+再返回
+$$
+c\equiv\;7^{s}\;mod\;p
+$$
+那么很显然，我们先想办法解决这个离散对数问题，求解$s$
+对`p-1`进行分解，结果如下
+```text
+factors = [2, 2, 2, 3, 7, 636277, 677857, 682777, 735809, 860059, 903949, 908441, 954851, 1017139, 1032341, 1163131, 1190737, 1227157, 1341323, 1395671, 1463611, 1556201, 1569401, 1713749, 1930931, 2219563, 2476283, 2477281, 2590633, 2756587, 2833643, 3095713, 3281449, 3688063, 4008793, 4285993, 5443981, 5720053, 5822981, 6201869, 6892217, 7093841, 7319857, 8227237, 9381107, 9477463, 10078729, 10084297, 10764907, 12416167, 14095651, 14294663, 14788051]
+```
+可见十分的光滑，直接使用sage内置的Pohlig-Hellman算法解就行，几乎是秒出
+```python
+c = 1210552586072154479867426776758107463169244511186991628141504400199024936339296845132507655589933479768044598418932176690108379140298480790405551573061005655909291462247675584868840035141893556748770266337895571889128422577613223452797329555381197215533551339146807187891070847348454214231505098834813871022509186
+
+p = 2050446265000552948792079248541986570794560388346670845037360320379574792744856498763181701382659864976718683844252858211123523214530581897113968018397826268834076569364339813627884756499465068203125112750486486807221544715872861263738186430034771887175398652172387692870928081940083735448965507812844169983643977
+
+g = 7
+
+R = GF(p)
+
+x = R(c).log(g)
+
+print("解得的 x =", x)
+```
+官方也给了使用Pohlig-Hellman算法的板子，在这里贴一下
+```python
+F = GF(p)
+a = F(7)
+X = F(cipher)
+n = a.order()
+primes = [2^3,3,7,636277,677857,682777,735809,860059,903949,908441,954851, 1017139, 1032341, 1163131, 1190737, 1227157, 1341323, 1395671, 1463611, 1556201, 1569401, 1713749, 1930931, 2219563, 2476283, 2477281, 2590633, 2756587, 2833643, 3095713, 3281449, 3688063, 4008793, 4285993, 5443981, 5720053, 5822981, 6201869, 6892217, 7093841, 7319857, 8227237, 9381107, 9477463, 10078729, 10084297, 10764907, 12416167, 14095651, 14294663,14788051] dlogs = []
+for fac in primes: 
+	t = int(n//fac) 
+	dlog = discrete_log(X**t, a**t) 
+	dlogs += [dlog] 
+	print("factor:"+str(fac)+",Discrete Log:"+str(dlog))
+	
+nc = crt(dlogs,primes)
+print(nc)
+assert pow(7,nc,p) == cipher
+```
+大致思路就是转化到模小因子下进行求解对数，再对结果打CRT，这里不细讲
+然后就是求解这个背包了，这里是线性的，我们可以考虑如下思路
+[背包密码 | DexterJie'Blog](https://dexterjie.github.io/2024/07/29/%E8%83%8C%E5%8C%85%E5%AF%86%E7%A0%81/)
+
+```python
+def solve_knapsack(key, target):
+
+    key = key.copy()
+
+    # 预处理：计算 k-1 并排序（从大到小）
+
+    items = [(k - 1) for k in key]
+
+    items.sort(reverse=True)
+
+    # 贪心选择
+
+    selected = []
+
+    remaining = target
+
+    for num in items:
+
+        if remaining >= num:
+
+            selected.append(num)
+
+            remaining -= num
+
+    if remaining != 0:
+
+        return None
+
+    # 返回对应 bit=0 的位置
+
+    bitmask = [1] * len(key)
+
+    for num in selected:
+
+        idx = next(i for i, k in enumerate(key) if (k - 1) == num)
+
+        bitmask[idx] = 0
+
+    return bitmask
+
+sum = sum(m)
+
+target = sum - x
+
+  
+  
+
+bitmask = solve_knapsack(m, target)
+
+# Step 3: 恢复明文
+
+msg = ''.join(str(b) for b in bitmask)
+
+flag = long_to_bytes(int(msg, 2))
+
+print("Flag:", flag.decode())
+
+# moectf{429eaa156f6961d6bc655c1887ebb779ec}
+```
+
+## OneMoreBit
+
+```python
+
+from Crypto.Util.number import getStrongPrime, bytes_to_long, GCD, inverse
+
+from Crypto.Util.Padding import pad
+
+from secret import flag
+
+import random
+
+def genKey(nbits,dbits):
+
+    p = getStrongPrime(nbits//2)
+
+    q = getStrongPrime(nbits//2)
+
+    n = p*q
+
+    phi = (p-1)*(q-1)
+
+    while True:
+
+        d = random.getrandbits(dbits)  
+
+        if d.bit_length() == dbits:
+
+            if GCD(d, phi) == 1:
+
+                e = inverse(d, phi)
+
+                pk = (n, e)
+
+                sk = (p, q, d)
+
+                return pk, sk
+
+nbits = 1024
+
+dbits = 258
+
+message = pad(flag,16)
+
+msg = pad(message, 16)
+
+m = bytes_to_long(msg)
+
+pk= genKey(nbits, dbits)[0]
+
+n, e = pk
+
+ciphertext = pow(m, e, n)
+
+  
+
+with open("data.txt","w") as f:
+
+    f.write(f"pk = {pk}\n")
+
+    f.write(f"ciphertext = {ciphertext}\n")
+
+    f.close()
+```
+
+这里用的是`getStrongPrime`来生成的素数，具体就是
+$$
+p
+$$
+为素数
+$$
+\frac{p-1}{2}
+$$
+也是大素数
+$$
+p-1;p+1
+$$光滑度很低
+
+生成两个512位强素数$p,q$ 
+然后生成258位的私钥$d$ 保证$(d,\phi)=1$,然后反过来生成公钥指数$e$ 告诉你公钥$(e,n)$
+这里肯定不让你分解$n$的
+这里注意到$d$不是256位而是258位，而且是由$d$这样生成$e$的，结合题目名字，有什么思路吗🤔
+如果$d$小一点我们考虑拓展维纳攻击，但是这里刚好大了一些
+简单搜索之后找到了`Boneh-Durfee`攻击方法
+[mimoo/RSA-and-LLL-attacks: attacking RSA via lattice reductions (LLL) (github.com)](https://github.com/mimoo/RSA-and-LLL-attacks)
+sir,this way
+梭一下脚本就能轻松解出d了，但是呢实际上标答使用的是`The Verheul and van Tilborg attack`
+论文在这里 [0811.0063 (arxiv.org)](https://arxiv.org/pdf/0811.0063)
+可见就算是泄露私钥位数也是非常非常危险的
+
+## EzLCG
+
+```python
+from sage.all import *
+
+from random import getrandbits, randint
+
+from secrets import randbelow
+
+from Crypto.Util.number import getPrime,isPrime,inverse
+
+from Crypto.Util.Padding import pad
+
+from Crypto.Cipher import AES
+
+from secret import priKey, flag
+
+from hashlib import sha1
+
+import os
+
+  
+  
+
+q = getPrime(160)
+
+while True:
+
+    t0 = q*getrandbits(864)
+
+    if isPrime(t0+1):
+
+        p = t0 + 1
+
+        break
+
+  
+  
+
+x = priKey
+
+assert p % q == 1
+
+h = randint(1,p-1)
+
+g = pow(h,(p-1)//q,p)
+
+y = pow(g,x,p)
+
+  
+  
+
+def sign(z, k):
+
+    r = pow(g,k,p) % q
+
+    s = (inverse(k,q)*(z+r*priKey)) % q
+
+    return (r,s)
+
+  
+  
+
+def verify(m,s,r):
+
+    z = int.from_bytes(sha1(m).digest(), 'big')
+
+    u1 = (inverse(s,q)*z) % q
+
+    u2 = (inverse(s,q)*r) % q
+
+    r0 = ((pow(g,u1,p)*pow(y,u2,p)) % p) % q
+
+    return r0 == r
+
+  
+  
+
+def lcg(a, b, q, x):
+
+    while True:
+
+        x = (a * x + b) % q
+
+        yield x
+
+  
+  
+
+msg = [os.urandom(16) for i in range(5)]
+
+  
+
+a, b, x = [randbelow(q) for _ in range(3)]
+
+prng = lcg(a, b, q, x)
+
+sigs = []
+
+for m, k in zip(msg,prng):
+
+    z = int.from_bytes(sha1(m).digest(), "big") % q
+
+    r, s = sign(z, k)
+
+    assert verify(m, s, r)
+
+    sigs.append((r,s))
+
+  
+  
+
+print(f"{g = }")
+
+print(f"{h = }")
+
+print(f"{q = }")
+
+print(f"{p = }")
+
+print(f"{msg = }")
+
+print(f"{sigs = }")
+
+key = sha1(str(priKey).encode()).digest()[:16]
+
+iv = os.urandom(16)
+
+cipher = AES.new(key, AES.MODE_CBC,iv)
+
+ct = cipher.encrypt(pad(flag,16))
+
+print(f"{iv = }")
+
+print(f"{ct = }")
+
+  
+  
+
+'''
+
+g = 81569684196645348869992756399797937971436996812346070571468655785762437078898141875334855024163673443340626854915520114728947696423441493858938345078236621180324085934092037313264170158390556505922997447268262289413542862021771393535087410035145796654466502374252061871227164352744675750669230756678480403551
+
+h = 13360659280755238232904342818943446234394025788199830559222919690197648501739683227053179022521444870802363019867146013415532648906174842607370958566866152133141600828695657346665923432059572078189013989803088047702130843109809724983853650634669946823993666248096402349533564966478014376877154404963309438891
+
+q = 1303803697251710037027345981217373884089065173721
+
+p = 135386571420682237420633670579115261427110680959831458510661651985522155814624783887385220768310381778722922186771694358185961218902544998325115481951071052630790578356532158887162956411742570802131927372034113509208643043526086803989709252621829703679985669846412125110620244866047891680775125948940542426381
+
+msg = [b'I\xf0\xccy\xd5~\xed\xf8A\xe4\xdf\x91+\xd4_题目用一个私钥$', b'~\xa0\x9bCB\xef\xc3SY4W\xf9Aa\rO', b'\xe6\x96\xf4\xac\n9\xa7\xc4\xef\x82S\xe9 XpJ', b'3,\xbb\xe2-\xcc\xa1o\xe6\x93+\xe8\xea=\x17\xd1', b'\x8c\x19PHN\xa8\xbc\xfc\xa20r\xe5\x0bMwJ']
+
+sigs = [(913082810060387697659458045074628688804323008021, 601727298768376770098471394299356176250915124698), (406607720394287512952923256499351875907319590223, 946312910102100744958283218486828279657252761118), (1053968308548067185640057861411672512429603583019, 1284314986796793233060997182105901455285337520635), (878633001726272206179866067197006713383715110096, 1117986485818472813081237963762660460310066865326), (144589405182012718667990046652227725217611617110, 1028458755419859011294952635587376476938670485840)]
+
+iv = b'M\xdf\x0e\x7f\xeaj\x17PE\x97\x8e\xee\xaf:\xa0\xc7'
+
+ct = b"\xa8a\xff\xf1[(\x7f\xf9\x93\xeb0J\xc43\x99\xb25:\xf5>\x1c?\xbd\x8a\xcd)i)\xdd\x87l1\xf5L\xc5\xc5'N\x18\x8d\xa5\x9e\x84\xfe\x80\x9dm\xcc"
+
+'''
+```
+$x构建了一个生成器与签名系统然后告诉这个的公钥$LCG，DSA
+DSA$(g,h)好几组签名的结果$，$(r,s)p,q,m,H(m),g,h也就是说给出$，$k_{i}我们能快速算出$,$r_{i}再根据$，$z_{i}我们能构建一个有关$,$x,k_{1},k_{2},\dots,k_{5}的方程想办法从其中恢复$，$x$ ？
+我们该代入的代入，不难得到
+$$
+k_{i}s_{i}\equiv\;(z_{i}+r_{i}\;\;x)\;mod\;q
+$$
+$$
+k_{i+1}s_{i+1}\equiv\;(z_{i+1}+r_{i+1}\;\;x)\;mod\;q
+$$
+结合LCG的简易线性关系
+$$
+k_{i+1}\equiv\;ak_{i}+b\;mod\;q
+$$
+我们先消去$b$,考虑
+$$
+k_{i}\equiv\;ak_{i-1}+b\;mod\;q
+$$
+即
+$$
+k_{i+1}-k_{i}\;\equiv\;a(k_{i}-k_{i-1})\;mod\;q
+$$
+又
+$$
+k_{i}\equiv\;s_{i}^{-1}(z_{i}+r_{i}\;\;x)\;mod\;q
+$$
+代入
+$$
+s_{i+1}^{-1}(z_{i+1}+r_{i+1}\;\;x)\;-s_{i}^{-1}(z_{i}+r_{i}x)\;\equiv\;a(s_{i}^{-1}(z_{i}+r_{i}\;\;x)\;-s_{i-1}^{-1}(z_{i-1}+r_{i-1}x))\;mod\;q
+$$
+我们把所有和$x$有关的都放到左边，其他的放到右边,但是在这样的话，同时就有了$a,x$两个未知量...
+
+
+呃呃，好像不是这样构造的,看一下wp,
+$$
+(k_{i+2}-k_{i+1})(k_{i}-k_{i-1})\;\equiv\;(k_{i+1}-k_{i})^{2}\;mod\;q
+$$
+而我们又知道
+$$
+k_{i} \;\equiv\;u_{i}+v_{i}x\;mod\;p
+$$
+所以由上式，我们可以得到关于$x$的二次方程，考虑用coppersmith
+$$
+(u_{i+2}-u_{i+1}+(v_{i+2}-v_{i+1})x)((u_{i}-u_{i-1}+(v_{i}-v_{i-1})x))\;\equiv\;((u_{i+1}-u_{i}+(v_{i+1}-v_{i})x))^2\;mod\;p
+$$
+取$i=1$即可
+```python
+from random import getrandbits, randint
+
+from secrets import randbelow
+
+from Crypto.Util.number import getPrime,isPrime,inverse
+
+from Crypto.Util.Padding import pad
+
+from Crypto.Cipher import AES
+
+from hashlib import sha1
+
+g = 81569684196645348869992756399797937971436996812346070571468655785762437078898141875334855024163673443340626854915520114728947696423441493858938345078236621180324085934092037313264170158390556505922997447268262289413542862021771393535087410035145796654466502374252061871227164352744675750669230756678480403551
+
+h = 13360659280755238232904342818943446234394025788199830559222919690197648501739683227053179022521444870802363019867146013415532648906174842607370958566866152133141600828695657346665923432059572078189013989803088047702130843109809724983853650634669946823993666248096402349533564966478014376877154404963309438891
+
+q = 1303803697251710037027345981217373884089065173721
+
+p = 135386571420682237420633670579115261427110680959831458510661651985522155814624783887385220768310381778722922186771694358185961218902544998325115481951071052630790578356532158887162956411742570802131927372034113509208643043526086803989709252621829703679985669846412125110620244866047891680775125948940542426381
+
+msg = [b'I\xf0\xccy\xd5~\xed\xf8A\xe4\xdf\x91+\xd4_这里用格子反而很麻烦不是很大告诉了一个$', b'~\xa0\x9bCB\xef\xc3SY4W\xf9Aa\rO', b'\xe6\x96\xf4\xac\n9\xa7\xc4\xef\x82S\xe9 XpJ', b'3,\xbb\xe2-\xcc\xa1o\xe6\x93+\xe8\xea=\x17\xd1', b'\x8c\x19PHN\xa8\xbc\xfc\xa20r\xe5\x0bMwJ']
+
+sigs = [(913082810060387697659458045074628688804323008021, 601727298768376770098471394299356176250915124698), (406607720394287512952923256499351875907319590223, 946312910102100744958283218486828279657252761118), (1053968308548067185640057861411672512429603583019, 1284314986796793233060997182105901455285337520635), (878633001726272206179866067197006713383715110096, 1117986485818472813081237963762660460310066865326), (144589405182012718667990046652227725217611617110, 1028458755419859011294952635587376476938670485840)]
+
+iv = b'M\xdf\x0e\x7f\xeaj\x17PE\x97\x8e\xee\xaf:\xa0\xc7'
+
+ct = b"\xa8a\xff\xf1[(\x7f\xf9\x93\xeb0J\xc43\x99\xb25:\xf5>\x1c?\xbd\x8a\xcd)i)\xdd\x87l1\xf5L\xc5\xc5'N\x18\x8d\xa5\x9e\x84\xfe\x80\x9dm\xcc"
+
+  
+  
+
+z=[]
+
+for m in msg:
+
+    z.append(int.from_bytes(sha1(m).digest(), 'big'))
+
+# print(z)
+
+r=[]
+
+s=[]
+
+for (i,j) in sigs:
+
+    r.append(i)
+
+    s.append(j)
+
+# print(s)
+
+# print(r)
+
+u=[]
+
+v=[]
+
+  
+
+for i in range(len(msg)):
+
+    u.append((inverse(s[i],q)*z[i]))
+
+    v.append((inverse(s[i],q)*r[i]))
+
+  
+
+F=GF(q)
+
+R.<x>=Zmod(q)[]
+
+f = (u[3]-u[2]+(v[3]-v[2])*x)*((u[1]-u[0]+(v[1]-v[0])*x))-((u[2]-u[1]+(v[2]-v[1])*x))**2
+
+f=f.monic()
+
+xx = f.roots()
+
+print(xx)
+
+for i in xx:
+
+    x=i[0]
+
+    key = sha1(str(x).encode()).digest()[:16]
+
+    cipher = AES.new(key, AES.MODE_CBC,iv)
+
+    flag=cipher.decrypt(ct)
+
+    print(flag)
+    # b'moectf{w3ak_n0nce_is_h4rmful_to_h3alth}\t\t\t\t\t\t\t\t\t'
+```
+））
+
+## babelifting
+
+```python
+from Crypto.Util.number import *
+
+from secret import flag
+ 
+
+p = getPrime(512)
+
+q = getPrime(512)
+
+n = p*q
+
+e = 0x1001 #
+
+d = inverse(e, (p-1)*(q-1))
+
+bit_leak = 400
+
+d_leak = d & ((1<<bit_leak)-1)
+
+msg = bytes_to_long(flag)
+
+cipher = pow(msg,e,n)
+
+pk = (n, e)
+
+  
+
+with open('output.txt','w') as f:
+
+    f.write(f"pk = {pk}\n")
+
+    f.write(f"cipher = {cipher}\n")
+
+    f.write(f"hint = {d_leak}\n")
+
+    f.close()
+```
+$d$的位数的泄露，已知低400位，搜索找到博客
+[d低位攻击 & d高位攻击-CSDN博客](https://blog.csdn.net/XiongSiqi_blog/article/details/130171830)
+[【CTF-RSA】sage脚本_d 低位攻击 - 哔哩哔哩 (bilibili.com)](https://www.bilibili.com/opus/587017245055589683)
+思路简述如下
+已知
+$$
+ed\;\equiv\;1\;mod\;\phi(n)
+$$
+即
+$$
+ed\;=1+k(p-1)(q-1)\;,(k<e)
+$$
+两边对$2^{400}$取模，得到
+$$
+ed_{l}\;\equiv\;1+k(p-1)(q-1)\;mod\;2^{400}
+$$
+消去$q$可得
+$$
+ed_{l}\;\equiv\;1+k(p-1)(\frac{n}{p}-1)\;mod\;2^{400}$$
+展开一下就是
+$$
+kp^{2}+(ed_{l}-1-k(n+1))p+kn\;\equiv\;0\;mod\;2^{400}
+$$
+我们枚举所有可能的$k<e$ 能得到一个关于$p$的二次方程，也就是说我们能解出来$p\;mod\;2^{400}$
+再考虑coppersmith即可
+注意到这里400位太高，而且$n$也不大，结合题干，我们考虑HenselLifting的方法来求解
+[模p^k的同余方程和离散对数求解_同余多项式与crypto-CSDN博客](https://blog.csdn.net/qwerzbc66/article/details/144989042)
+
+```python
+p = 2
+k = 100
+m = pow(p, k)
+
+x = var('x')
+fx = 31635333913961551790218176796 * x ^ 2 + 343355432375781642567844278672 * x + 569420970791634503307822359156
+
+# solve the equation f(x)=0 over m=p^k
+solutions = solve_mod([fx == 0], m)  
+for solution in solutions:
+    print(int(fx(int(solution[0]))) % m == 0) # True
+
+```
+
+官方的脚本貌似有点小问题，我这里跑的话会炸内存，没法按照预期跑出来，我的exp修改后如下
+```python
+# sage 10.6
+from Crypto.Util.number import *
+
+from tqdm import trange
+
+  
+
+n, e = (53282434320648520638797489235916411774754088938038649364676595382708882567582074768467750091758871986943425295325684397148357683679972957390367050797096129400800737430005406586421368399203345142990796139798355888856700153024507788780229752591276439736039630358687617540130010809829171308760432760545372777123, 4097)
+
+cipher = 14615370570055065930014711673507863471799103656443111041437374352195976523098242549568514149286911564703856030770733394303895224311305717058669800588144055600432004216871763513804811217695900972286301248213735105234803253084265599843829792871483051020532819945635641611821829176170902766901550045863639612054
+
+dl = 1550452349150409256147460237724995145109078733341405037037945312861833198753379389784394833566301246926188176937280242129
+
+  
+
+# Initialize list for potential p values
+
+mp = []
+
+  
+
+def find_p(pl, n,e):
+
+    R.<y> = PolynomialRing(Zmod(n), implementation='NTL')
+
+    g = y*2^400 + pl  # Changed from 398 to 400 to match your original approach
+
+    g = g.monic()
+
+    try:
+
+        # Adjusted parameters
+
+        gg = g.small_roots(X=2^112, beta=0.5, epsilon=0.05)
+
+        if gg:
+
+            for root in gg:
+
+                p_candidate = int(root)*2^400 + int(pl)
+
+                if n % p_candidate == 0:  # Verify it's a factor
+
+                    q = n // p_candidate
+
+                    phi = (p_candidate-1)*(q-1)
+
+                    try:
+
+                        d = inverse_mod(e, phi)
+
+                        m = pow(cipher, d, n)
+
+                        print(long_to_bytes(int(m)))
+
+                        mp.append(p_candidate)
+
+                    except ValueError:
+
+                        continue
+
+    except Exception as e:
+
+        print(f"Error in small_roots: {e}")
+
+        return
+
+  
+
+# Main loop
+
+for k in trange(1, e+1):
+
+    try:
+
+        # Using solve_mod properly
+
+
+        R_mod = Zmod(2^400)
+
+        x_mod = R_mod['x'].gen()
+
+        poly = k*x_mod^2 + (e*dl - 1 - (n+1)*k)*x_mod + k*n
+
+        roots = poly.roots(multiplicities=False)
+
+        for pl in roots:
+
+            find_p(int(pl), n,e)
+
+    except Exception as e:
+
+        print(f"Error in k={k}: {e}")
+
+        continue
+
+  
+
+print("Found p candidates:", mp)
+
+# b'moectf{7h3_st4rt_0f_c0pp3rsmith!}'
+```
+大概两分钟吧，全跑完数据要十分钟多
+
+## HiddenPoly
+
+```python
+from Crypto.Util.Padding import pad
+
+from Crypto.Util.number import *
+
+from Crypto.Cipher import AES
+
+import os
+
+  
+  
+
+q = 264273181570520944116363476632762225021
+
+key = os.urandom(16) #16字节的字符串key
+
+iv = os.urandom(16)
+
+root = 122536272320154909907460423807891938232
+
+f = sum([a*root**i for i,a in enumerate(key)])
+
+assert key.isascii()
+
+assert f % q == 0
+
+  
+
+with open('flag.txt','rb') as f:
+
+    flag = f.read()
+
+  
+
+cipher = AES.new(key,AES.MODE_CBC, iv)
+
+ciphertext = cipher.encrypt(pad(flag,16)).hex()
+
+  
+
+with open('output.txt','w') as f:
+
+    f.write(f"{iv = }" + "\n")
+
+    f.write(f"{ciphertext = }" + "\n")
+
+  
+
+iv = b'Gc\xf2\xfd\x94\xdc\xc8\xbb\xf4\x84\xb1\xfd\x96\xcd6\\'
+
+ciphertext = 'd23eac665cdb57a8ae7764bb4497eb2f79729537e596600ded7a068c407e67ea75e6d76eb9e23e21634b84a96424130e'
+```
+
+给你了
+$$
+f=\sum\limits ^{15}_{i=0}a_{i}\;root^{i}
+$$
+而且有
+$$
+f\equiv\;0\;mod\;q
+$$
+也就是
+$$
+\sum\limits ^{15}_{i=0}a_{i}\;root^{i}\;\equiv\;0\;mod\;q
+$$
+接下来我们由这个式子要尝试恢复出$key$ 考虑这里的$a_{i}$十分滴小，我们造个格子，先整一个运算式出来
+$$
+(a_0,a_1,\dots,a_{15},-k)
+\begin{pmatrix}
+1 & 0 & \cdots & 0 & root^0 \\
+0 & 1 & \cdots & 0 & root^1 \\
+\vdots & \vdots & \ddots & \vdots & \vdots \\
+0 & 0 & \cdots & 1 & root^{15} \\
+0 & 0 & \cdots & 0 & q
+\end{pmatrix}=(a_0,a_1,\dots,a_{15},0)
+$$
+我们可以给格向量最后一列配一个大一点的系数，来使得右边落在最小向量中
+实验一下你取$k>128$就够用了
+得到了$key$ 后面就是喜闻乐见的解密了，exp如下
+```python
+  
+
+from Crypto.Util.Padding import pad
+
+from Crypto.Util.number import *
+
+from Crypto.Cipher import AES
+
+root = 122536272320154909907460423807891938232
+
+q = 264273181570520944116363476632762225021
+
+k = 2^9
+
+M = matrix(ZZ, 17, 17)
+
+for i in range(16):
+
+    M[i,i]=1
+
+    M[i,16]=k*root^i
+
+M[16,16]=k*q
+
+L=M.LLL()
+
+# print(L)
+
+key = b'\x0f!r\x1a\x071c8Qtjf\x05C\x1e\x1d'
+
+iv = b'Gc\xf2\xfd\x94\xdc\xc8\xbb\xf4\x84\xb1\xfd\x96\xcd6\\'
+
+ciphertext = 'd23eac665cdb57a8ae7764bb4497eb2f79729537e596600ded7a068c407e67ea75e6d76eb9e23e21634b84a96424130e'
+
+ciphertext = bytes.fromhex(ciphertext)
+
+  
+
+cipher = AES.new(key, AES.MODE_CBC, iv)
+
+  
+
+plaintext = cipher.decrypt(ciphertext)
+
+  
+
+print("Decrypted plaintext (raw):", plaintext)
+b'moectf{th3_first_blood_0f_LLL!@#$}\x0e\x0e\x0e\x0e\x0e\x0e\x0e\x0e\x0e\x0e\x0e\x0e\x0e\x0e'
+```
+至此历经前前后后大几个月，moectf2024已经全部复现，写完这篇blog之后就得去准备期末了））
+
+
+
