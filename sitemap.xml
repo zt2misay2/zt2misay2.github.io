@@ -211,13 +211,6 @@
   </url>
   
   <url>
-    <loc>http://www.zt2misay2.cn/tags/ECC/</loc>
-    <lastmod>2025-08-08</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
     <loc>http://www.zt2misay2.cn/tags/LCG/</loc>
     <lastmod>2025-08-08</lastmod>
     <changefreq>weekly</changefreq>
@@ -226,6 +219,13 @@
   
   <url>
     <loc>http://www.zt2misay2.cn/tags/DSA/</loc>
+    <lastmod>2025-08-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://www.zt2misay2.cn/tags/ECC/</loc>
     <lastmod>2025-08-08</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
