@@ -29,7 +29,7 @@
 <meta property="og:description" content="羊城杯2024初赛Crypto复现">
 <meta property="og:locale">
 <meta property="article:published_time" content="2025-08-13T01:29:25.000Z">
-<meta property="article:modified_time" content="2025-08-13T01:31:00.420Z">
+<meta property="article:modified_time" content="2025-10-17T12:23:56.313Z">
 <meta property="article:author" content="Misay">
 <meta property="article:tag" content="CTF">
 <meta name="twitter:card" content="summary">
@@ -47,7 +47,7 @@
   };
 </script>
 
-  <title>羊城杯2024 | Misay's blog</title>
+  <title>羊城杯2024 | Misay's blog</title><meta name="robots" content="noindex">
   
 
 
@@ -336,10 +336,16 @@ mjx-container[display="true"] + br {
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2025-08-13 09:29:25 / 修改时间：09:31:00" itemprop="dateCreated datePublished" datetime="2025-08-13T09:29:25+08:00">2025-08-13</time>
+              <time title="创建时间：2025-08-13 09:29:25" itemprop="dateCreated datePublished" datetime="2025-08-13T09:29:25+08:00">2025-08-13</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-10-17 20:23:56" itemprop="dateModified" datetime="2025-10-17T20:23:56+08:00">2025-10-17</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -439,7 +445,7 @@ Theorem 本质是判断是否为素数</p>
 Eratosthenes</p>
 <p>exp</p>
 <figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> Crypto.Util.number <span class="keyword">import</span> *</span><br><span class="line"><span class="keyword">from</span> tqdm <span class="keyword">import</span> tqdm</span><br><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line">n = <span class="number">18770575776346636857117989716700159556553308603827318013591587255198383129370907809760732011993542700529211200756354110539398800399971400004000898098091275284235225898698802555566416862975758535452624647017057286675078425814784682675012671384340267087604803050995107534481069279281213277371234272710195280647747033302773076094600917583038429969629948198841325080329081838681126456119415461246986745162687569680825296434756908111148165787768172000131704615314046005916223370429567142992192702888820837032850104701948658736010527261246199512595520995042205818856177310544178940343722756848658912946025299687434514029951</span></span><br><span class="line">c = <span class="number">2587907790257921446754254335909686808394701314827194535473852919883847207482301560195700622542784316421967768148156146355099210400053281966782598551680260513547233270646414440776109941248869185612357797869860293880114609649325409637239631730174236109860697072051436591823617268725493768867776466173052640366393488873505207198770497373345116165334779381031712832136682178364090547875479645094274237460342318587832274304777193468833278816459344132231018703578274192000016560653148923056635076144189403004763127515475672112627790796376564776321840115465990308933303392198690356639928538984862967102082126458529748355566</span></span><br><span class="line">goal = <span class="number">703440151</span></span><br><span class="line"></span><br><span class="line">res = <span class="number">0</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">count_primes_with_sieve</span>(<span class="params">p</span>):</span><br><span class="line">    <span class="keyword">if</span> p &lt; <span class="number">2</span>:</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span></span><br><span class="line">    is_prime = np.ones(p + <span class="number">1</span>, dtype=<span class="built_in">bool</span>)</span><br><span class="line">    is_prime[<span class="number">0</span>] = is_prime[<span class="number">1</span>] = <span class="literal">False</span></span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">2</span>, <span class="built_in">int</span>(p**<span class="number">0.5</span>) + <span class="number">1</span>):</span><br><span class="line">        <span class="keyword">if</span> is_prime[i]:</span><br><span class="line">            is_prime[i*i::i] = <span class="literal">False</span></span><br><span class="line">    <span class="keyword">return</span> np.<span class="built_in">sum</span>(is_prime) </span><br><span class="line">num =  count_primes_with_sieve(goal) </span><br><span class="line">e = <span class="built_in">abs</span>(num * -<span class="number">1</span> + <span class="number">2</span>)</span><br><span class="line">pp = floor(sqrt(n))</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(-<span class="number">10000</span>, <span class="number">10000</span>):</span><br><span class="line">    p = pp + i</span><br><span class="line">    <span class="keyword">if</span> n % p == <span class="number">0</span>:</span><br><span class="line">        q = n // p</span><br><span class="line">        phi = (p-<span class="number">1</span>) * (q-<span class="number">1</span>)</span><br><span class="line">        <span class="keyword">assert</span> gcd(e,phi) == <span class="number">1</span></span><br><span class="line">        d = inverse_mod(e, phi)</span><br><span class="line">        <span class="built_in">print</span>(long_to_bytes(<span class="built_in">pow</span>(c,d,n)))</span><br><span class="line"></span><br><span class="line"><span class="comment"># b'DASCTF{Ot2N63D_n8L6kJt_f40V61m_zS1O8L7}'</span></span><br></pre></td></tr></table></figure>
-
+<!-- flag of hidden posts -->
     </div>
 
     
@@ -455,16 +461,6 @@ Eratosthenes</p>
 
 
         
-    <div class="post-nav">
-      <div class="post-nav-item">
-    <a href="/2025/08/06/NepCTF2025/" rel="prev" title="NepCTF2025">
-      <i class="fa fa-chevron-left"></i> NepCTF2025
-    </a></div>
-      <div class="post-nav-item">
-    <a href="/2025/08/18/LILCTF2025/" rel="next" title="LILCTF2025">
-      LILCTF2025 <i class="fa fa-chevron-right"></i>
-    </a></div>
-    </div>
       </footer>
     
   </article>
