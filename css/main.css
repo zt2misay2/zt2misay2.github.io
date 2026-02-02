@@ -177,7 +177,7 @@ body {
 body {
   background: var(--body-bg-color);
   color: var(--text-color);
-  font-family: 'Lato', "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: 'Noto Serif SC', "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 1em;
   line-height: 2;
 }
@@ -193,7 +193,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: 'Lato', "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: 'Noto Serif SC', 'Noto Serif SC', "PingFang SC", "Microsoft YaHei", sans-serif;
   font-weight: bold;
   line-height: 1.5;
   margin: 20px 0 15px;
@@ -1035,7 +1035,7 @@ pre .javascript .function {
   color: var(--brand-hover-color);
 }
 .site-title {
-  font-family: 'Lato', "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: 'Noto Serif SC', "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 1.375em;
   font-weight: normal;
   margin: 0;
@@ -1217,7 +1217,7 @@ pre .javascript .function {
 }
 .links-of-author a::before,
 .links-of-author span.exturl::before {
-  background: #62bbff;
+  background: #b4c4db;
   border-radius: 50%;
   content: ' ';
   display: inline-block;
@@ -1554,7 +1554,7 @@ pre .javascript .function {
   top: 0;
 }
 .post-body {
-  font-family: 'Lato', "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: 'Noto Serif SC', 'Noto Serif SC', "PingFang SC", "Microsoft YaHei", sans-serif;
   overflow-wrap: break-word;
   word-wrap: break-word;
 }
@@ -1852,7 +1852,7 @@ pre .javascript .function {
 }
 .posts-expand .post-meta {
   color: #999;
-  font-family: 'Lato', "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: 'Noto Serif SC', 'Noto Serif SC', "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 0.75em;
   margin: 3px 0 60px 0;
   text-align: center;
@@ -2587,4 +2587,76 @@ ul.breadcrumb li + li:last-child {
 }
 .back-to-top.back-to-top-on {
   margin-top: 16px;
+}
+/* Friend Links - Swizzer Style Refined */
+.links-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+.link-card {
+  display: flex !important;
+  align-items: center;
+  padding: 16px;
+  margin: 0 !important;
+  background: var(--content-bg-color, #fff);
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  text-decoration: none !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  height: 100%;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+.link-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+  border-color: #3b82f6;
+}
+.link-avatar {
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 50%;
+  margin: 0 16px 0 0 !important;
+  object-fit: cover;
+  border: 1px solid #f3f4f6;
+  flex-shrink: 0;
+}
+.link-info {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+  text-align: left;
+}
+.link-name {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-color, #111827);
+  margin-bottom: 4px;
+}
+.link-desc {
+  display: block;
+  font-size: 13px;
+  color: var(--grey-dim, #6b7280);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* NexT Dark Mode Integration */
+[data-theme='dark'] .link-card {
+  background: #222;
+  border-color: #333;
+  border-bottom-color: #333 !important;
+}
+[data-theme='dark'] .link-name {
+  color: #f3f4f6;
+}
+[data-theme='dark'] .link-desc {
+  color: #9ca3af;
+}
+[data-theme='dark'] .link-card:hover {
+  border-color: #3b82f6;
+  background: #2a2a2a;
 }
