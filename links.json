@@ -1,38 +1,36 @@
 {
-  "friends": [
+  "groups": [
     {
-      "id_name": "cf-links",
-      "desc": "Common links included in circle friends",
+      "id_name": "damn",
+      "title": "DAMN",
       "link_list": [
-        {
-          "name": "Arthals' ink",
-          "intro": "所见高山远木，阔云流风；所幸岁月盈余，了无拘束",
-          "link": "https://arthals.ink/",
-          "avatar": "https://cdn.arthals.ink/Arthals.png"
-        },
-        {
-          "name": "CWorld Site",
-          "intro": "求知若愚，虚怀若谷",
-          "link": "https://cworld0.com/",
-          "avatar": "https://gravatar.loli.net/avatar/1ffe42aa45a6b1444a786b1f32dfa8aa?s=200"
-        }
+        { "name": "1kal0vic | web", "intro": "想混吃等死却睡死了过去", "link": "https://lunereal.1kal0vic.top", "avatar": "https://lunereal.1kal0vic.top/images/avatar.jpg" },
+        { "name": "r3t2 | pwn", "intro": "不愿意透露姓名的内部人士", "link": "https://fuckth3w0r1d.github.io", "avatar": "/img/linksrc/r3t2.png" },
+        { "name": "shiria | re", "intro": "", "link": "https://shiria1207.github.io/", "avatar": "/img/linksrc/shiria.png" }
       ]
     },
     {
-      "id_name": "inactive-links",
-      "desc": "Inactive or rule-breaking friends",
-      "link_list": []
+      "id_name": "dawn",
+      "title": "DAWN",
+      "link_list": [
+        { "name": "zijeff | crypto", "intro": "这个人很神秘，什么也没说", "link": "https://zijeff.github.io/", "avatar": "/img/linksrc/zijeff.jpg" },
+        { "name": "Ramoor | crypto", "intro": "一个沉溺于Crypto的ctfer", "link": "https://ramoor.github.io/", "avatar": "/img/linksrc/Ramoor.jpg" },
+        { "name": "Sevora | re", "intro": "顺其自然，当为所为", "link": "https://lingchen0408.github.io/", "avatar": "/img/linksrc/Sevora.png" },
+        { "name": "Maple | pwn & AI", "intro": "独坐青天钓沧海，空依月桂看合离", "link": "https://oldmaple.top/", "avatar": "/img/linksrc/maple.jpg" },
+        { "name": "kuri | web", "intro": "早安咕，午安咕，晚安咕咕咕", "link": "https://kuri.jwmc.top/", "avatar": "/img/linksrc/kuri.jpg" },
+        { "name": "Siesta | re", "intro": "byebye~", "link": "https://siestazzz.github.io/", "avatar": "/img/linksrc/siesta.jpg" }
+      ]
     },
     {
-      "id_name": "special-links",
-      "desc": "Other special links",
+      "id_name": "peers",
+      "title": "Peers & Friends",
       "link_list": [
-        {
-          "name": "Astro",
-          "intro": "The web framework for content-driven websites",
-          "link": "https://astro.build/",
-          "avatar": "https://avatars.githubusercontent.com/u/44914786?s=200&v=4"
-        }
+        { "name": "oxygen", "intro": "一口吃不成胖子，但一口一口可以", "link": "https://huangoxygen.github.io", "avatar": "/img/linksrc/oxygen.jpg" },
+        { "name": "dicaeopolis | TOUHOU & AI", "intro": "不点进去怎么能知道我干什么的😋", "link": "https://dicaeopolis.github.io/", "avatar": "/img/linksrc/dicaeopolis.jpg" },
+        { "name": "Himekawa | misc & AI | V&N", "intro": "Never Settle", "link": "https://himekawa.top/", "avatar": "/img/linksrc/himekawa.jpg" },
+        { "name": "Cris | re & *", "intro": "一个乐观的记录者", "link": "https://crisq.top/", "avatar": "/img/linksrc/cris.jpg" },
+        { "name": "candlest | pwn | SYSU | Inflnity", "intro": "Fun and meaningful job", "link": "https://blog.candlest.cc", "avatar": "https://avatars.githubusercontent.com/u/125652899?v=4" },
+        { "name": "astralprisma | re | Nu1L", "intro": "燃炬，生光，照我以火", "link": "https://astralprisma.github.io/", "avatar": "/img/linksrc/astralprisma.jpg" }
       ]
     }
   ]
