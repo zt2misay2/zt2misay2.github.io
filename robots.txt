@@ -1,4 +1,8 @@
+User-agent: GPTBot
+User-agent: ClaudeBot
+User-agent: Claude-Web
+
 User-agent: *
 Allow: /
 
-Sitemap: https://www.zt2misay2.cn/sitemap.xml
+Sitemap: https://www.zt2misay2.cn/sitemap-index.xml
